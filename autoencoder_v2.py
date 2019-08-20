@@ -35,19 +35,21 @@ class Autoencoder(nn.Module):
         
         # design of encoder part
         self.encoder = nn.Sequential(
-            nn.Conv2d(3, 16, 3, stride=1, padding=1),
+            nn.Conv2d(3, 6, kernel_size=3),
+            nn.ReLU(True),
+            #nn.BatchNorm2d(16),
+            nn.Conv2d(6, 16, kernel_size=3),
             nn.ReLU(),
-            nn.BatchNorm2d(16),
-            nn.MaxPool2d(2, stride=2, return_indices=True))
+            nn.MaxPool2d(2, return_indices=True))
 
-        self.unpool = nn.MaxUnpool2d(2, stride=1, padding=0)
+        self.unpool = nn.MaxUnpool2d(2)
 
         # design of decoder part
         self.decoder = nn.Sequential(             
-            nn.ConvTranspose2d(16, 16, 3, stride=2, padding=1, output_padding=1),
+            nn.ConvTranspose2d(16, 6, 3),
             nn.ReLU(),
-            nn.BatchNorm2d(16),
-            nn.ConvTranspose2d(16, 3, 3, stride=1, padding=1, output_padding=0),
+            #nn.BatchNorm2d(16),
+            nn.ConvTranspose2d(36, 3, 3),
             nn.ReLU())
 
     def forward(self,x):
