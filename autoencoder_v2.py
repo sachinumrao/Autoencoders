@@ -1,82 +1,95 @@
-# import depedencies
 import torch
-import torchvision as tv
-import torchvision.transforms as transforms
 import torch.nn as nn
+import numpy as np
+from tqdm import tqdm
+from torchvision import datasets
+import torchvision.transforms as transforms
+from torchsummary import summary
+import matplotlib.pyplot as plt
 
-# load the cifar-10 data
-transform = transforms.Compose([transforms.ToTensor(),  
-                               transforms.Normalize((0.4914, 0.4822, 0.4466), 
-                                                    (0.247, 0.243, 0.261))])
+# convert data to Tensor
+transform = transforms.ToTensor()
 
-trainTransform  = tv.transforms.Compose([tv.transforms.ToTensor(), 
-                                        tv.transforms.Normalize((0.4914, 0.4822, 0.4466), 
-                                                                (0.247, 0.243, 0.261))])
+# load the MNIST data
+print("Downloading MNIST Dataset...")
+train_data = datasets.MNIST(root='data', train=True,
+                                   download=True, transform=transform)
+val_data = datasets.MNIST(root='data', train=False,
+                                  download=True, transform=transform)
 
-trainset = tv.datasets.CIFAR10(root='./data',  train=True,download=True, 
-                               transform=transform)
+batch_size = 32
+num_workers = 4
+train_loader = torch.utils.data.DataLoader(train_data, 
+                    batch_size=batch_size, 
+                    num_workers=num_workers)
 
-dataloader = torch.utils.data.DataLoader(trainset, batch_size=32, shuffle=False, 
-                                         num_workers=4)
+val_loader = torch.utils.data.DataLoader(val_data, 
+                batch_size=batch_size, 
+                num_workers=num_workers)
 
-testset = tv.datasets.CIFAR10(root='./data', train=False, download=True, 
-                              transform=transform)
-
-classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 
-           'horse', 'ship', 'truck')
-
-testloader = torch.utils.data.DataLoader(testset, batch_size=4, shuffle=False, 
-                                         num_workers=2)
-
-# model architecture
+# define the model architecture
 class Autoencoder(nn.Module):
     def __init__(self):
-        super(Autoencoder,self).__init__()
-        
-        # design of encoder part
+        super(Autoencoder, self).__init__()
+       
+       # encoder block
         self.encoder = nn.Sequential(
-            nn.Conv2d(3, 6, kernel_size=3),
+            nn.Conv2d(1, 16, 3, padding=1),
             nn.ReLU(True),
-            #nn.BatchNorm2d(16),
-            nn.Conv2d(6, 16, kernel_size=3),
-            nn.ReLU(),
-            nn.MaxPool2d(2, return_indices=True))
+            nn.MaxPool2d(2, 2),
 
-        self.unpool = nn.MaxUnpool2d(2)
+            nn.Conv2d(16, 4, 3, padding=1),
+            nn.ReLU(True),
+            nn.MaxPool2d(2, 2)
+        )
+        
+        #self.upsample_layer = nn.Upsample(scale_factor=2, mode='nearest')
+        
+        # decoder block
+        self.decoder = nn.Sequential(
+            nn.Upsample(scale_factor=2, mode='nearest'),
+            nn.ConvTranspose2d(4, 16, 3, padding=1),
+            nn.ReLU(True),
+            
+            nn.Upsample(scale_factor=2, mode='nearest'),
+            nn.ConvTranspose2d(16, 1, 3, padding=1),
+            nn.ReLU(True)     
+            
+        )
 
-        # design of decoder part
-        self.decoder = nn.Sequential(             
-            nn.ConvTranspose2d(16, 6, 3),
-            nn.ReLU(),
-            #nn.BatchNorm2d(16),
-            nn.ConvTranspose2d(36, 3, 3),
-            nn.ReLU())
 
-    def forward(self,x):
-        print("Input Size : ", x.size())
-        out, indices = self.encoder(x)
-        print("Pooled Size : ", out.size())
-        out = self.unpool(out, indices)
-        print("Unpooled Size : ", out.size())
+    def forward(self, x):
+        
+        out = self.encoder(x)
         out = self.decoder(out)
-        print("Out size : ", out.size())
         return out
 
+
+# Create Model 
+model = Autoencoder()
+model.cuda()
+
+print("Model Summary")
+print(summary(model, (1,28,28)))
 
 # training params
 n_epochs = 10
 
 # loss function and optimizer
-model = Autoencoder()
 criterion = nn.MSELoss()
 optimizer = torch.optim.Adam(model.parameters(), weight_decay=1e-5)
 
+print("Setting Up Training Loop...")
+
 # training loop
+loss_vals = []
 for epoch in range(n_epochs):
-    for data in dataloader:
+    loss = None
+    for data in tqdm(train_loader, desc="Epoch: "+str(epoch+1)+"/"+str(n_epochs)+" :"):
         img, _ = data
 
         # forward pass
+        img = img.cuda()
         output = model(img)
         loss = criterion(output, img)
 
@@ -85,4 +98,34 @@ for epoch in range(n_epochs):
         loss.backward()
         optimizer.step()
     
-    print('epoch [{}/{}], loss:{:.4f}'.format(epoch+1, n_epochs, loss.item()))
+    print('epoch [{}/{}], loss:{:.4f}'.format(epoch+1, n_epochs, loss.cpu().item()))
+    loss_vals.append(loss.cpu().item())
+
+# Plot loss function values over epochs
+plt.plot(loss_vals)
+plt.xlabel("Epochs")
+plt.ylabel("Loss")
+plt.title("Convolutional Autoencoder on MNIST Data")
+plt.show()
+
+# Tests on validation data
+# obtain one batch of test images
+dataiter = iter(val_loader)
+images, _ = dataiter.next()
+img = images.cuda()
+
+
+output = model(img)
+images = images.numpy()
+
+output = output.cpu().view(batch_size, 1, 28, 28)
+output = output.detach().numpy()
+
+fig, axes = plt.subplots(nrows=2, ncols=10, sharex=True, sharey=True, figsize=(25,4))
+
+# input images on top row, reconstructions on bottom
+for images, row in zip([images, output], axes):
+    for img, ax in zip(images, row):
+        ax.imshow(np.squeeze(img), cmap='gray')
+        ax.get_xaxis().set_visible(False)
+        ax.get_yaxis().set_visible(False)
