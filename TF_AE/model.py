@@ -192,6 +192,12 @@ class AutoEncoder:
 
     def load_weights(self, path):
         self.model.load_weights(path)
+        
+        
+    def reconstruct(self, images):
+        latent_reps = self.encoder.predict(images)
+        recon_imgs = self.decoder.predict(latent_reps)
+        return recon_imgs, latent_reps
 
 
 if __name__ == "__main__":
