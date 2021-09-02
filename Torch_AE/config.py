@@ -1,3 +1,3 @@
 LR = 1e-4
 BS = 32
-EPOCHS = 1
+EPOCHS = 10

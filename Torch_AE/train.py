@@ -22,7 +22,8 @@ def get_cifar_dataloaders():
     """
     transform = transforms.Compose(
         [ToTensor(),
-         Normalize((0.4914, 0.4822, 0.4466), (0.247, 0.243, 0.261)),])
+         # Normalize((0.4914, 0.4822, 0.4466), (0.247, 0.243, 0.261)),
+         ])
     
     trainset = datasets.CIFAR10(root='~/Data/torchvision/', 
                                 train=True, 
@@ -79,10 +80,10 @@ def train_one_epoch(model, train_dataloader, loss, optimizer, device):
         
         # calculate loss
         train_loss += loss_.item()*inputs.size(0)
-        wandb.log({"batch_loss": loss_.item()})
+        # wandb.log({"batch_loss": loss_.item()})
     
     train_loss = train_loss / len(train_dataloader)
-    wandb.log({"train_loss": train_loss})
+    # wandb.log({"train_loss": train_loss})
     
     return train_loss, model
 
@@ -105,7 +106,7 @@ def validate(model, dataloader, loss, device):
         test_loss += loss_.item()*inputs.size(0)
         
     test_loss = test_loss / len(dataloader)
-    wandb.log({"test_loss": test_loss})
+    # wandb.log({"test_loss": test_loss})
     
     return test_loss
 
@@ -113,12 +114,13 @@ def validate(model, dataloader, loss, device):
 # main train loop
 def train(model, train_dataloader, test_dataloader, device):
     # set up tracking
-    wandb.init(project='cifar10_autoencoder', entity='sumrao')
-    wandb.watch(model)
+    # wandb.init(project='cifar10_autoencoder', entity='sumrao')
+    # wandb.watch(model)
     train_loss = []
     test_loss = []
     # define loss function
     loss = nn.MSELoss()
+    # loss = nn.BCELoss()
     # define optimizer
     optimizer = optim.Adam(model.parameters(), lr=config.LR)
     
@@ -139,7 +141,7 @@ def train(model, train_dataloader, test_dataloader, device):
         print(f'Epoch: {i+1}/{config.EPOCHS} \t Test Loss: {test_loss_epoch:.6f}')
         
         # save model
-        if (i+1)%5 == 0:
+        if (i+1) % 5 == 0:
             save_model(model, i)        
     
     loss_dict = {'train_loss': train_loss, 'test_loss': test_loss}
@@ -162,7 +164,7 @@ def load_model():
 # run inference from model
 def run_inference(test_dataloader, device):
     classes = ['airplane', 'automobile', 'bird', 'cat', 'deer',
-           'dog', 'frog', 'horse', 'ship', 'truck']
+               'dog', 'frog', 'horse', 'ship', 'truck']
     
     model = load_model()
     model.to(device)
@@ -175,12 +177,10 @@ def run_inference(test_dataloader, device):
     
     output = output.cpu().detach().numpy()
     images = images.cpu().detach().numpy()
-    
-    
-    
+
     # plot original images
     fig, axes = plt.subplots(nrows=2, ncols=5, sharex=True, sharey=True,
-                                 figsize=(12,10))
+                             figsize=(12, 10))
     for idx in range(5):
         ax = fig.add_subplot(2,5, idx+1, xticks=[], yticks=[])
         img = images[idx,:,:,:].squeeze()
