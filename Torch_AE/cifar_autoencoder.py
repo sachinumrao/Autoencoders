@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from torchsummary import summary
 
+
 # custom layer for reshape
 class Reshape(nn.Module):
     """

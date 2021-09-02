@@ -9,7 +9,6 @@ import pandas as pd
 from tqdm import tqdm
 import wandb
 from torchvision.transforms.transforms import Normalize, ToTensor
-import wandb as wb
 import matplotlib.pyplot as plt
 
 import config
@@ -38,12 +37,12 @@ def get_cifar_dataloaders():
     train_dataloader = DataLoader(trainset,
                                   batch_size=config.BS,
                                   shuffle=False,
-                                  num_workers=0)
+                                  num_workers=2)
     
     test_dataloader = DataLoader(testset,
                                  batch_size=config.BS,
                                  shuffle=False,
-                                 num_workers=0)
+                                 num_workers=2)
     
     return train_dataloader, test_dataloader
 
