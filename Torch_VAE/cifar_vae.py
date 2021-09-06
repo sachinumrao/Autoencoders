@@ -65,9 +65,13 @@ class VariationalAutoEncoder(nn.Module):
         
         return out
     
+    def sample(self, mu, logvar):
+        std = torch.exp(0.5*logvar)
+        eps = torch.randn_like(std)
+        return mu + eps*std
+    
     
 if __name__ == '__main__':
     model = VariationalAutoEncoder()
-    # print(model)
     print(summary(model, input_size=(3, 32, 32)))
     
